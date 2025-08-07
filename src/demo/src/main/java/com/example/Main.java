@@ -18,7 +18,16 @@ public class Main {
         // ברגע שיסתיים הסקר לשמור את המידע ונשלח אותו מאותה המתודה בבוט למחלקת הפאנל.
         // נחבר את הפאאנל לחלון.
         // כתבתי כאן כדי לא לשכוח!
-        // new ResultsWindow();
+
+        SekerBot sekerBot = new SekerBot();
+        // כדי לוודא שהחלון יווצר רק אחרי שהסקר יסתיים צריך לבדוק בלולאה שכל עוד חוזר
+        // מאותה מתודה נאל, ז״א שהסקר לא הגיע לשלב האחרון, אז לא ייצור את החלון.
+        while (sekerBot.getFinalDataMap() == null) { //
+            if (sekerBot.getFinalDataMap() != null) {
+                new ResultsWindow(sekerBot.getFinalDataMap());
+                break;
+            }
+        }
 
         // כדי לא לעשות חיים קשים נכתוב את התוצאות כטקסט בסווינג ואולי כגרף עמודות ולא
         // עוגה.

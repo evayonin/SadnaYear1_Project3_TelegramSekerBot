@@ -3,6 +3,8 @@ package com.example;
 import javax.swing.JPanel;
 
 import java.awt.*;
+import java.util.List;
+import java.util.Map;
 
 public class ResultsPanel extends JPanel {
 
@@ -13,9 +15,12 @@ public class ResultsPanel extends JPanel {
   // בבנאי לפאנל.
   // רק כאשר הסקר עבר לשלב האחרי אחרון - נגמר הסקר, נעביר את הדאטה לחלון ואז הוא
   // יעביר לפאנל.
+  private final Map<Long, List<String>> results;
 
-  public ResultsPanel(int x, int y, int width, int height) { // נעביר גם את מפת הדאטה מההגרה בחלון
+  public ResultsPanel(int x, int y, int width, int height, Map<Long, List<String>> results) { // נעביר גם את מפת הדאטה
+                                                                                              // מההגדרה בחלון
     // שאר המתודות של הגדרת הפאנל
+    this.results = results;
 
     showSekerData();
   }
