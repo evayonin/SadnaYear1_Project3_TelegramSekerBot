@@ -10,18 +10,22 @@ import org.telegram.telegrambots.meta.api.objects.polls.PollAnswer;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public class SekerBot extends TelegramLongPollingBot {
+  public static final String QUESTION1 = "What's your favorite animal?";
+  public static final String QUESTION2 = "How many pets have you had?";
+  public static final List<String> ANSWERS_TO_Q1 = List.of("Cat", "Dog", "Hamster", "Rabbit");
+  public static final List<String> ANSWERS_TO_Q2 = List.of("0", "1", "2", "More than 2");
 
   private List<Long> chatIds = new ArrayList<>();
 
   private enum userStage {
-    FirstMessage, Question1, Question2, Finished
+    FIRST_MESSAGE, QUESTION1, QUESTION2, FINISHED // יעבור לסטטוס השאלה לפי שענה עליה
   }
 
   private Map<Long, userStage> userStageMap = new HashMap<>(); // השלב של כל יוזר
 
   private enum sekerStage { // השלבים של הסקר - חייב כדי לדעת מתי לשלוח את המפה של הדאטה הסופית למיין וליצור
     // חלון מהדאטה
-    notfinished, Finished
+    NOT_FINISHED, FINISHED
   }
 
   private sekerStage ss;
@@ -33,7 +37,7 @@ public class SekerBot extends TelegramLongPollingBot {
   private Long firstHiTimestamp = null; // משתנה עבור הפעם הראשונה שנשלח היי - לספירת ה5 דקות
 
   public SekerBot() {
-    sekerStage ss = sekerStage.notfinished;
+    sekerStage ss = sekerStage.NOT_FINISHED;
   }
 
   @Override
@@ -52,7 +56,7 @@ public class SekerBot extends TelegramLongPollingBot {
     boolean everyOneAnswered = true;
     for (userStage us : this.userStageMap.values()) {
       // בדיקה שכל הערכים במפה של יוזר סטייג׳ לא שווים לפינישד - לא כולם ענו
-      if (us != userStage.Finished) {
+      if (us != userStage.FINISHED) {
         everyOneAnswered = false;
       }
     }
@@ -89,17 +93,17 @@ public class SekerBot extends TelegramLongPollingBot {
               sendMessage.setText("A new member joined the community! Welcome " + update.getMessage().getFrom()
                   .getUserName() + "! \nCurrent number of members: " + this.chatIds.size());
             }
-            this.userStageMap.put(chatID, userStage.FirstMessage); // כדי שנדע פעם הבא להציג לו את השאלה הראשונה
+            this.userStageMap.put(chatID, userStage.FIRST_MESSAGE); // כדי שנדע פעם הבא להציג לו את השאלה הראשונה
           }
           // הסקר יתחיל אחרי שהצטרפו 3 אנשים:
           else if (this.chatIds.size() >= 3) {
             String question = null;
             List<String> answerOptions = new ArrayList<>();
             // הסקר:
-            if (this.userStageMap.get(chatID) == userStage.FirstMessage) { // אם שלח היי
-              this.userStageMap.put(chatID, userStage.Question1); // question 1
-              question = "What's your favorite animal? Choose one option.";
-              answerOptions = List.of("Cat", "Dog", "Hamster", "Rabbit");
+            if (this.userStageMap.get(chatID) == userStage.FIRST_MESSAGE) { // אם שלח היי
+              this.userStageMap.put(chatID, userStage.QUESTION1); // question 1
+              question = this.QUESTION1 + " Choose one option.";
+              answerOptions = this.ANSWERS_TO_Q1;
               renderPollQuestion(update, question, answerOptions); // יציג את שאלה 1
 
               if (update.hasPollAnswer()) { // אם היוזר בחר תשובה
@@ -114,11 +118,11 @@ public class SekerBot extends TelegramLongPollingBot {
               // ולעדכן את המצב של הסקר
 
               // אחרי שענה על שאלה 1:
-              this.userStageMap.put(chatID, userStage.Question2); // עדכון במפה שענה על שאלה 1 שנציג פעם הבאה את 2
+              this.userStageMap.put(chatID, userStage.QUESTION2); // עדכון במפה שענה על שאלה 1 שנציג פעם הבאה את 2
             } //
-            if (this.userStageMap.get(chatID) == userStage.Question2) { // question 2
-              question = "How many pets have you had?";
-              answerOptions = List.of("0", "1", "2", "More than 2");
+            if (this.userStageMap.get(chatID) == userStage.QUESTION2) { // question 2
+              question = this.QUESTION2 + " Choose one option.";
+              answerOptions = this.ANSWERS_TO_Q2;
               renderPollQuestion(update, question, answerOptions); // יציג את שאלה 2
 
               if (update.hasPollAnswer()) { // אם היוזר בחר תשובה
@@ -128,7 +132,7 @@ public class SekerBot extends TelegramLongPollingBot {
                 // ולעדכן את המצב של הסקר
               }
               // // אחרי שענה על שאלה 2:
-              this.userStageMap.put(chatID, userStage.Finished); // עדכון במפה שענה על שאלה 1 שנציג פעם הבאה את 2
+              this.userStageMap.put(chatID, userStage.FINISHED); // עדכון במפה שענה על שאלה 1 שנציג פעם הבאה את 2
 
               // ולעדכן את המצב של הסקר
             }
@@ -141,7 +145,7 @@ public class SekerBot extends TelegramLongPollingBot {
         e.printStackTrace();
       }
     }
-    this.ss = sekerStage.Finished; // אם כולם ענו או שעברו 5 דקות
+    this.ss = sekerStage.FINISHED; // אם כולם ענו או שעברו 5 דקות
   }
 
   private void renderPollQuestion(Update update, String questionText, List<String> options) { // מתודה שמציגה שאלה בסקר
@@ -182,11 +186,12 @@ public class SekerBot extends TelegramLongPollingBot {
 
   public Map<Long, List<String>> getFinalDataMap() {
     // תנאי - אם הסקר-סטייג׳ הגיע לשלב האחרון (סיים) אז נשלח את המפה userAnswersMap
-    if (this.ss == sekerStage.Finished) {
+    if (this.ss == sekerStage.FINISHED) {
       return this.userAnswersMap;
     }
     return null;
   }
+
 }
 
 // לא להתייחס זה בשביל התוכנה שלי:
