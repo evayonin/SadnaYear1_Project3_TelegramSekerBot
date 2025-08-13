@@ -1,12 +1,25 @@
 // 7/8/25 next time continue from showSekerData() and check the bot
 package com.example;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 public class Main {
+
+    public static String q1;
+    public static String q2;
+    public static List<String> ansToQ1 = new ArrayList<>();
+    public static List<String> ansToQ2 = new ArrayList<>();
+    // לא יכולים להיות פינאליים כי מאתחלים עם סקאנר בהמשך. בבוט הם פינאליים
+
     public static void main(String[] args) {
+        chooseQuestionsAndAns();
+
         try {
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
             telegramBotsApi.registerBot(new SekerBot());
@@ -23,9 +36,24 @@ public class Main {
                 break;
             }
         }
-        // כדי לא לעשות חיים קשים נכתוב את התוצאות כטקסט בסווינג ואולי כגרף עמודות ולא
-        // עוגה.
-        // לשאול את אביה במה היא השתמפה כדי להציג כגרף עוגה - אם יש מתודות מובנות
-        // בסווינג שמאפשרות.
+    }
+
+    public static void chooseQuestionsAndAns() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter the first question of your questionnaire:");
+        q1 = scanner.nextLine();
+        System.out.println("Enter 4 answer options for the first question:");
+        for (int i = 0; i < 4; i++) {
+            System.out.print(i + 1 + ". ");
+            ansToQ1.add(scanner.nextLine());
+        }
+        System.out.println("Enter the second question of your questionnaire:");
+        q1 = scanner.nextLine();
+        System.out.println("Enter 4 answer options for the second question:");
+        for (int i = 0; i < 4; i++) {
+            System.out.print(i + 1 + ". ");
+            ansToQ2.add(scanner.nextLine());
+        }
+        scanner.close();
     }
 }

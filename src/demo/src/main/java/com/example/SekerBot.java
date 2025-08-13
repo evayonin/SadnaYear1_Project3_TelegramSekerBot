@@ -10,10 +10,16 @@ import org.telegram.telegrambots.meta.api.objects.polls.PollAnswer;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public class SekerBot extends TelegramLongPollingBot {
-  public static final String QUESTION1 = "What's your favorite animal?";
-  public static final String QUESTION2 = "How many pets have you had?";
-  public static final List<String> ANSWERS_TO_Q1 = List.of("Cat", "Dog", "Hamster", "Rabbit");
-  public static final List<String> ANSWERS_TO_Q2 = List.of("0", "1", "2", "More than 2");
+  // public static final String QUESTION1 = "What's your favorite animal?";
+  // public static final String QUESTION2 = "How many pets have you had?";
+  // public static final List<String> ANSWERS_TO_Q1 = List.of("Cat", "Dog",
+  // "Hamster", "Rabbit");
+  // public static final List<String> ANSWERS_TO_Q2 = List.of("0", "1", "2", "More
+  // than 2");
+  public static final String QUESTION1 = Main.q1;
+  public static final String QUESTION2 = Main.q2;
+  public static final List<String> ANSWERS_TO_Q1 = Main.ansToQ1;
+  public static final List<String> ANSWERS_TO_Q2 = Main.ansToQ2;
 
   private List<Long> chatIds = new ArrayList<>();
 
