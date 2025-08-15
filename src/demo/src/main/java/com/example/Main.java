@@ -1,8 +1,8 @@
-// 7/8/25 next time continue from showSekerData() and check the bot
 package com.example;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -22,19 +22,24 @@ public class Main {
 
         try {
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
-            telegramBotsApi.registerBot(new SekerBot());
+            SekerBot sekerBot = new SekerBot();
+            telegramBotsApi.registerBot(sekerBot); // הופעה יחידה
+
+            Map<Long, List<String>> results;
+            // בדיקה מקוצרת שכל עוד המפה ריקה ומה שחוזר מהמתודה זה נאל (שהסקר לא הגיע לשלב
+            // פינישד):
+            while ((results = sekerBot.getFinalDataMap()) == null) {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ignored) {
+                }
+            }
+            Map<Long, List<String>> finalResults = results; // שמירת המפה הסופית
+            // רק אחרי שייצא מלולאת הווייל ז״א כשיש מפה סופית, ייצור את החלון:
+            javax.swing.SwingUtilities.invokeLater(() -> new ResultsWindow(finalResults));
+
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
-        }
-
-        SekerBot sekerBot = new SekerBot();
-        // כדי לוודא שהחלון יווצר רק אחרי שהסקר יסתיים צריך לבדוק בלולאה שכל עוד חוזר
-        // מאותה מתודה נאל, ז״א שהסקר לא הגיע לשלב האחרון, אז לא ייצור את החלון.
-        while (sekerBot.getFinalDataMap() == null) { //
-            if (sekerBot.getFinalDataMap() != null) {
-                new ResultsWindow(sekerBot.getFinalDataMap());
-                break;
-            }
         }
     }
 
@@ -48,7 +53,7 @@ public class Main {
             ansToQ1.add(scanner.nextLine());
         }
         System.out.println("Enter the second question of your questionnaire:");
-        q1 = scanner.nextLine();
+        q2 = scanner.nextLine();
         System.out.println("Enter 4 answer options for the second question:");
         for (int i = 0; i < 4; i++) {
             System.out.print(i + 1 + ". ");

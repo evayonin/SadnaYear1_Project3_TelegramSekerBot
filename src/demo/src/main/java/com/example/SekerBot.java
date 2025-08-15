@@ -10,12 +10,7 @@ import org.telegram.telegrambots.meta.api.objects.polls.PollAnswer;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public class SekerBot extends TelegramLongPollingBot {
-  // public static final String QUESTION1 = "What's your favorite animal?";
-  // public static final String QUESTION2 = "How many pets have you had?";
-  // public static final List<String> ANSWERS_TO_Q1 = List.of("Cat", "Dog",
-  // "Hamster", "Rabbit");
-  // public static final List<String> ANSWERS_TO_Q2 = List.of("0", "1", "2", "More
-  // than 2");
+
   public static final String QUESTION1 = Main.q1;
   public static final String QUESTION2 = Main.q2;
   public static final List<String> ANSWERS_TO_Q1 = Main.ansToQ1;
@@ -27,158 +22,21 @@ public class SekerBot extends TelegramLongPollingBot {
     FIRST_MESSAGE, QUESTION1, QUESTION2, FINISHED // יעבור לסטטוס השאלה לפי שענה עליה
   }
 
-  private Map<Long, userStage> userStageMap = new HashMap<>(); // השלב של כל יוזר
+  private Map<Long, userStage> userStageMap = new HashMap<>();
 
-  private enum sekerStage { // השלבים של הסקר - חייב כדי לדעת מתי לשלוח את המפה של הדאטה הסופית למיין וליצור
-    // חלון מהדאטה
+  private enum sekerStage { // כדי לדעת מתי לשלוח את המפה הסופית
     NOT_FINISHED, FINISHED
   }
 
-  private sekerStage ss;
-  // מפה של מפתח יוזר איידי וערך רשימה של התשובות שענה עליהם
-  // לדוגמה האינדקס הראשון ברשימה (ערך המפה בכל זוג) יהיה התשובה הראשונה שבחר - כך
-  // עבור כל המפתחות (איידי׳ס):
-  private Map<Long, List<String>> userAnswersMap = new HashMap<>(); // הדאטה
+  private sekerStage sekerStage;
+
+  private Map<Long, List<String>> userAnswersMap = new HashMap<>();
+  // מפת התוצאות שנשמור בה את רשימת התשובות של שאלות 1 ו-2 עבור כל יוזר
 
   private Long firstHiTimestamp = null; // משתנה עבור הפעם הראשונה שנשלח היי - לספירת ה5 דקות
 
   public SekerBot() {
-    sekerStage ss = sekerStage.NOT_FINISHED;
-  }
-
-  @Override
-  // כנראה תהיה מתודה במיין שתקבל את המפה הסופית, וברגע שהסקר יסתיים (עבור
-  // המקרה שכולם ענו או עבור המקרה שעברו 5 דקות) נעביר למיין את המפה.
-  // בעזרת מתודה מהמחלקה של הבוט שמעבירה רק את המפה הסופית (קצרה) יהיה בה תנאי
-  // שהיא תעביר אותה רק אם הסקר-סטייג׳ הגיע לשלב אחרון שהסקר כבר הסתיים.
-
-  // צריך לראות איך לממש את זה במחלקת החלון כך שיווצר רק אחרי שנשלחה המפה.
-  // האפשרות הכי הגיונית היא לשלוח את המפה למיין ואם היא לא ריקה ליצור את החלון
-  // ולשלוח לבנאי שלו את המפה שזה יהיה גם שדה ואז החלון ייצור בבנאי שלו אובייקט של
-  // פאנל שילח לתוכו את המפה גם כן.
-  public void onUpdateReceived(Update update) {
-    // מתי הסקר ייסגר:
-    // תנאי 1
-    boolean everyOneAnswered = true;
-    for (userStage us : this.userStageMap.values()) {
-      // בדיקה שכל הערכים במפה של יוזר סטייג׳ לא שווים לפינישד - לא כולם ענו
-      if (us != userStage.FINISHED) {
-        everyOneAnswered = false;
-      }
-    }
-    // תנאי 2
-    boolean fiveMinPassed = false;
-    if (firstHiTimestamp != null) {
-      long currentTime = System.currentTimeMillis();
-      if (currentTime - firstHiTimestamp >= 5 * 60 * 1000) { // 5 דקות
-        fiveMinPassed = true;
-      }
-    }
-    while (!everyOneAnswered && !fiveMinPassed) { // כל עוד לא כולם ענו
-      // וגם לא עברו חמש דקות שלפחות לערך אחד במפה אין פינישד
-
-      SendMessage sendMessage = new SendMessage(); // אובייקט של ההודעה שהבוט יכתוב ליוזר
-      long chatID = update.getMessage().getChatId();
-      sendMessage.setChatId(chatID);
-
-      // ההודעה הראשונה שהיוזר שולח:
-      if (update.hasMessage()) { // יענה רק אם שלחו את זה
-        if (update.getMessage().getText().equals("Hi") ||
-            update.getMessage().getText().equals("hi") ||
-            update.getMessage().getText().equals("היי")) {
-
-          if (firstHiTimestamp == null) {
-            firstHiTimestamp = System.currentTimeMillis();
-          }
-
-          if (!chatIds.contains(chatID)) {
-            chatIds.add(chatID);
-            // נשלח לכל היוזרים כשיוזר הצטרף:
-            for (Long currentId : this.chatIds) {
-              sendMessage.setChatId(currentId);
-              sendMessage.setText("A new member joined the community! Welcome " + update.getMessage().getFrom()
-                  .getUserName() + "! \nCurrent number of members: " + this.chatIds.size());
-            }
-            this.userStageMap.put(chatID, userStage.FIRST_MESSAGE); // כדי שנדע פעם הבא להציג לו את השאלה הראשונה
-          }
-          // הסקר יתחיל אחרי שהצטרפו 3 אנשים:
-          else if (this.chatIds.size() >= 3) {
-            String question = null;
-            List<String> answerOptions = new ArrayList<>();
-            // הסקר:
-            if (this.userStageMap.get(chatID) == userStage.FIRST_MESSAGE) { // אם שלח היי
-              this.userStageMap.put(chatID, userStage.QUESTION1); // question 1
-              question = this.QUESTION1 + " Choose one option.";
-              answerOptions = this.ANSWERS_TO_Q1;
-              renderPollQuestion(update, question, answerOptions); // יציג את שאלה 1
-
-              if (update.hasPollAnswer()) { // אם היוזר בחר תשובה
-                String answer = handlePollAnswer(update.getPollAnswer(), answerOptions);
-                // נוסיף את התשובה שהיוזר בחר באותה שאלה למפת התוצאות:
-                if (!userAnswersMap.containsKey(chatID)) {
-                  // אם המפה לא מכילה את היוזר אז נוסיף אותו עם רשימת תשובות ריקה
-                  userAnswersMap.put(chatID, new ArrayList<>());
-                }
-                userAnswersMap.get(chatID).add(answer); // הוספת התשובה (לרשימת המחרוזות)
-              }
-              // ולעדכן את המצב של הסקר
-
-              // אחרי שענה על שאלה 1:
-              this.userStageMap.put(chatID, userStage.QUESTION2); // עדכון במפה שענה על שאלה 1 שנציג פעם הבאה את 2
-            } //
-            if (this.userStageMap.get(chatID) == userStage.QUESTION2) { // question 2
-              question = this.QUESTION2 + " Choose one option.";
-              answerOptions = this.ANSWERS_TO_Q2;
-              renderPollQuestion(update, question, answerOptions); // יציג את שאלה 2
-
-              if (update.hasPollAnswer()) { // אם היוזר בחר תשובה
-                String answer = handlePollAnswer(update.getPollAnswer(), answerOptions);
-                // נוסיף את התשובה שהיוזר בחר באותה שאלה למפת התוצאות:
-                userAnswersMap.get(chatID).add(answer); // הוספה של התשובה (לרשימת המחרוזות)
-                // ולעדכן את המצב של הסקר
-              }
-              // // אחרי שענה על שאלה 2:
-              this.userStageMap.put(chatID, userStage.FINISHED); // עדכון במפה שענה על שאלה 1 שנציג פעם הבאה את 2
-
-              // ולעדכן את המצב של הסקר
-            }
-          }
-        }
-      }
-      try {
-        execute(sendMessage);
-      } catch (TelegramApiException e) {
-        e.printStackTrace();
-      }
-    }
-    this.ss = sekerStage.FINISHED; // אם כולם ענו או שעברו 5 דקות
-  }
-
-  private void renderPollQuestion(Update update, String questionText, List<String> options) { // מתודה שמציגה שאלה בסקר
-    // נותן לבחור אופציה אחת
-    SendPoll sendPoll = new SendPoll();
-    sendPoll.setChatId(update.getMessage().getChatId()); // כדי שיידע באיזה צ׳אט לשלוח את הסקר
-    sendPoll.setQuestion(questionText);
-    sendPoll.setOptions(options);
-    sendPoll.setIsAnonymous(false); // שנדע מי ענה (יוזר איי די)
-    try {
-      execute(sendPoll);
-    } catch (TelegramApiException e) {
-      throw new RuntimeException();
-    }
-  }
-
-  private String handlePollAnswer(PollAnswer pollAnswer, List<String> options) { // מתודה שמקבלת את התשובה עבור השאלה
-                                                                                 // ומחזירה כמחרוזת את
-    // התשובה
-    String answer = null;
-    List<Integer> selectedOptions = pollAnswer.getOptionIds(); // אילו אפשרויות סומנו (לפי האינדקס שלהן)
-    // למרות שיוזר יכול לסמן אפשרות אחת, בגלל המבנה גייסון של השרת של טלגרם זה מחייב
-    // לשמור ברשימה של אינטגרים את אינדקס האפשרות שנבחרה.
-    // כי אפשר גם לשנות שייתן לבחור יותר מתשובה אחת.
-    int answerNumber = selectedOptions.get(0);
-    answer = options.get(answerNumber);
-    return answer;
+    this.sekerStage = sekerStage.NOT_FINISHED;
   }
 
   @Override
@@ -190,21 +48,158 @@ public class SekerBot extends TelegramLongPollingBot {
     return "8400300848:AAFoHs1SwEuwr4hgAeHZMh8NAsdm_0JXiQg";
   }
 
+  @Override
+  public void onUpdateReceived(Update update) {
+
+    if (update.hasPollAnswer()) {
+      handlePollAnswer(update.getPollAnswer());
+      // עם התייחסות בתוך המתודה למקרה שיוזר לא בחר תשובה או כשנשלחה תשובה ריקה כדי
+      // שלא יקרוס או ימשיך לשלב הבא שלו
+
+      checkFinish(); // אם כולם ענו או עברו כבר 5 דקות
+      return; // יציאה מהמתודה. לא ימשיך את הסקר
+    }
+
+    // אם האפדייט היה שליחת הודעה
+    if (update.hasMessage()) {
+      String text = update.getMessage().getText();
+      long chatID = update.getMessage().getChatId();
+
+      // הבוט יגיב רק כששולחים היי
+      if ("Hi".equalsIgnoreCase(text) || "היי".equals(text) || "הי".equals(text)) {
+
+        if (firstHiTimestamp == null) { // מתי שיתחיל לספור 5 דקות (מההיי הראשון שנשלח כשהערך עוד נאל בהתחלה כפי שאותחל)
+          firstHiTimestamp = System.currentTimeMillis();
+        }
+
+        if (!chatIds.contains(chatID)) {
+          chatIds.add(chatID); // הוספת היוזר החדש
+          userStageMap.put(chatID, userStage.FIRST_MESSAGE);
+          // נאתחל ליוזר רשימת תשובות ריקה במפת התוצאות כדי שלא יהיו חריגות בשימוש שלה
+          // בפאנל:
+          List<String> answers = new ArrayList<>();
+          answers.add(null);
+          answers.add(null);
+          userAnswersMap.put(chatID, answers);
+
+          // הודעה לכל שאר היוזרים שיוזר הצטרף:
+          broadcastJoin(update.getMessage().getFrom().getUserName());
+
+          // ישלח את השאלה הראשונה רק אם הצטרפו 3 אנשים לפחות
+          // (ישלח כל פעם לכל יוזר חדש שהוסף לרשימה ששלח היי):
+          if (chatIds.size() >= 3) {
+            sendQuestion1(chatID);
+          }
+        }
+      }
+    }
+    checkFinish(); // בדיקה סופית אם כולם ענו או אם עברו 5 דקות גם אחרי האפדייט
+  }
+
+  // שלחית שאלה 1
+  private void sendQuestion1(long userId) { // יישלח ליוזר שממנו הגיע האפדייט ששלח היי
+    String q = this.QUESTION1 + " Choose one option.";
+    List<String> opts = this.ANSWERS_TO_Q1;
+    renderPollQuestionForUser(userId, q, opts);
+    userStageMap.put(userId, userStage.QUESTION1);
+  }
+
+  // שליחת שאלה 2
+  private void sendQuestion2(long userId) { // יישלח ליוזר שענה על שאלה 1 (שהגיע ממנו תשובה עבור שאלה 1 במתודה שמטפלת
+                                            // בתשובה)
+    String q = this.QUESTION2 + " Choose one option.";
+    List<String> opts = this.ANSWERS_TO_Q2;
+    renderPollQuestionForUser(userId, q, opts);
+    userStageMap.put(userId, userStage.QUESTION2);
+  }
+
+  // מתודה כללית לשליחת שאלה של סקר לאותו יוזר שממנו התקבל אפדייט או היי ז״א
+  // האס-מאסאג׳ (שליחת שאלה 1) או תשובה על שאלה 1 ז״א האס-פול-אנסר (שליחת שאלה 2)
+  private void renderPollQuestionForUser(long userId, String questionText, List<String> options) {
+    SendPoll sendPoll = new SendPoll();
+    sendPoll.setChatId(userId);
+    sendPoll.setQuestion(questionText);
+    sendPoll.setOptions(options);
+    sendPoll.setIsAnonymous(false); // שנדע מי ענה
+    sendPoll.setType("regular");
+    try {
+      execute(sendPoll);
+    } catch (TelegramApiException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  // טיפול בתשובה שהתקבלה מהסקר
+  private void handlePollAnswer(PollAnswer pollAnswer) {
+    long userId = pollAnswer.getUser().getId();
+    userStage stage = userStageMap.get(userId);
+
+    List<Integer> chosen = pollAnswer.getOptionIds();
+    // למרות שהיוזר בוחר רק תשובה אחת המבנה הוא של רשימה כי יש אפשרות להגדיר בחירת
+    // כמה תשובות.
+
+    // אם היוזר לא בחר תשובה - כדי שלא תהיה שגיאה כשניגש לאינדקס התשובה ושלא ייקדם
+    // לשלב הבא של היוזר במצבים כמו כשהסקר בדיוק נסגר ונשלח פול-אנסר ריק:
+    if (chosen == null || chosen.isEmpty())
+      return;
+
+    int idx = chosen.get(0);
+
+    if (stage == userStage.QUESTION1) { // אם היוזר עונה על שאלה 1
+      String ans = this.ANSWERS_TO_Q1.get(idx); // התשובה שבחר מהאפשרויות
+      userAnswersMap.get(userId).set(0, ans); // הוספה למפת התוצאות את התשובה עבור השאלה הזאת באינדקס הראשון
+      sendQuestion2(userId); // שליחת השאלה השנייה
+    } else if (stage == userStage.QUESTION2) { // אם היוזר עונה על שאלה 2
+      String ans = this.ANSWERS_TO_Q2.get(idx); // התשובה שבחר מהאפשרויות
+      userAnswersMap.get(userId).set(1, ans); // הוספה למפת התוצאות את התשובה עבור השאלה הזאת באינדקס השני
+      userStageMap.put(userId, userStage.FINISHED); // עדכון שהיוזר סיים
+    }
+
+  }
+
+  // בדיקה לסגירת הסקר
+  private void checkFinish() {
+    // בדיקה אם כולם סיימו לענות:
+    boolean everyoneAnswered = userStageMap != null
+        && !userStageMap.isEmpty()
+        && userStageMap.values().stream().allMatch(us -> us == userStage.FINISHED);
+    // חייב להוסיף את שני התנאים הראשונים עבור הבדיקה הראשונה כשהמפה ריקה וממחזירה
+    // נאל ובגלל זה חוזר טרו. כדי שיחזור פולס.
+
+    // בדיקה אם עברו 5 דקות מאז היוזר הראשון ששלח היי:
+    boolean fiveMinPassed = false;
+    if (firstHiTimestamp != null) { // יבדוק אחרי שאתחלנו בפעם הראשונה (במתודה onUpdateRecieved)
+      long currentTime = System.currentTimeMillis();
+      fiveMinPassed = (currentTime - firstHiTimestamp) >= 5 * 60 * 1000;
+    }
+    if (everyoneAnswered || fiveMinPassed) {
+      this.sekerStage = sekerStage.FINISHED;
+    }
+  }
+
+  // שליחת הודעה מתאימה לכל יוזר כשיוזר חדש הצטרף
+  private void broadcastJoin(String newUserName) { // נקראת אחרי שהתקבל אפדייט שנשלחה הודעה היי והיוזר לא קיים ברשימת
+                                                   // האיידי׳ס
+    SendMessage sendMessage = new SendMessage();
+    for (Long currentId : this.chatIds) {
+      sendMessage.setChatId(currentId);
+      sendMessage.setText(
+          "A new member joined the community! Welcome " + newUserName +
+              "! \nCurrent number of members: " + this.chatIds.size());
+      try {
+        execute(sendMessage);
+      } catch (TelegramApiException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   public Map<Long, List<String>> getFinalDataMap() {
-    // תנאי - אם הסקר-סטייג׳ הגיע לשלב האחרון (סיים) אז נשלח את המפה userAnswersMap
-    if (this.ss == sekerStage.FINISHED) {
+    // אם הסקר-סטייג׳ הגיע לשלב האחרון (סיים) אז נשלח את המפה userAnswersMap
+    if (this.sekerStage == sekerStage.FINISHED) {
       return this.userAnswersMap;
     }
     return null;
   }
 
 }
-
-// לא להתייחס זה בשביל התוכנה שלי:
-
-// להוסיף בוואץ׳ בדיבאגר (vscode) את הפקודות:
-// update.getMessage().getFrom().getUserName()
-// update.getMessage().getFrom().getFirstName()
-// update.getMessage().getMessageId()
-// update.getMessage().getText()
-// עם פויינט על ההדפסות. אחרי כל שליחת הודעה להריץ מחדש דיבאגר כדי לראות.

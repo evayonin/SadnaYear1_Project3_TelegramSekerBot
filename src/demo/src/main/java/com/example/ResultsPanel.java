@@ -62,11 +62,11 @@ public class ResultsPanel extends JPanel {
   }
 
   // בפורמט הזה:
-  // Question 1: What is your favorite animal?
-  // 1. Cat: 75%
-  // 2. Hamster: 20%
-  // 3. Dog: 5%
-  // 4. Rabbit: 5%
+  // Question 1: "....?""
+  // 1. "ans 1": 75% לדוגמה
+  // 2. "ans 2": 20%
+  // 3. "ans 3": 5%
+  // 4. "ans 4": 5%
   private String setResultsTextForStatisticsJTextArea(List<String> SAQ1, List<Double> SPQ1, List<String> SAQ2,
       List<Double> SPQ2) {
     // שאלה 1:
@@ -102,6 +102,7 @@ public class ResultsPanel extends JPanel {
     for (List<String> list : resultsMap.values()) {
       freqIndex0.put(list.get(0), freqIndex0.get(list.get(0)) + 1); // q1
       freqIndex1.put(list.get(1), freqIndex1.get(list.get(1)) + 1); // q2
+      // לשים לב שמפת התוצאות במחלקת הבוט במתודה מאוחלת עם רשימות עם 2 מחרוזות נאל
     }
     // יצרנו עבור כל שאלה מפה שמכילה מפתחות של התשובה וערך של מספר הפעמים שנבחרה.
     // הן לא ממויינות לכן נרצה למיין:
@@ -158,5 +159,4 @@ public class ResultsPanel extends JPanel {
   }
 
   // לא נדרש שימוש בפיינט קומפוננט כי מציגים רק טקסט.
-
 }
